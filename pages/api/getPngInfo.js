@@ -148,7 +148,6 @@ export default async function handler(req, res) {
     const form = new IncomingForm({
       keepExtensions: true,
       multiples: false,
-      uploadDir: os.tmpdir(), // システムの一時ディレクトリを使用
     });
   
     form.parse(req, async (err, fields, files) => {
@@ -158,25 +157,11 @@ export default async function handler(req, res) {
       }
   
       try {
-        let file;
-        if (files.file) {
-          file = Array.isArray(files.file) ? files.file[0] : files.file;
-        } else {
-          const fileKey = Object.keys(files)[0];
-          file = files[fileKey];
-        }
-  
-        if (!file || !file.filepath) {
-          throw new Error('No file uploaded or invalid file object');
-        }
-  
+        const file = files.file[0];
         const buffer = await fs.readFile(file.filepath);
   
-        // ファイル処理後、一時ファイルを削除
-        await fs.unlink(file.filepath).catch(console.error);
-  
         const metadata = await extractMetadata(buffer);
-        metadata.fileinfo.filename = file.originalFilename || 'unknown.png';
+        metadata.fileinfo.filename = file.originalFilename;
   
         const fileUrl = await uploadFileToSlack(buffer, metadata.fileinfo.filename);
         await sendSlackNotification(metadata, fileUrl);
@@ -188,7 +173,7 @@ export default async function handler(req, res) {
         res.status(200).json(metadata);
       } catch (error) {
         console.error('Error processing image:', error);
-        res.status(500).json({ error: 'Error processing image metadata: ' + error.message });
+        res.status(500).json({ error: 'Error processing image metadata' });
       }
     });
   }
