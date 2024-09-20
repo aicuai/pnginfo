@@ -1,17 +1,6 @@
 # pnginfo
 pnginfo
+ComfyUI のワークフロー、Automatic1111 の PNGInfo、C2PA などの AI 画像生成ツールによる埋め込み情報を表示する機能を追加しましょう。
+これらの情報は通常、PNG ファイルの tEXt チャンクや特定のメタデータフィールドに保存されています。sharp ライブラリだけでは、これらの特殊な埋め込み情報を直接取得するのは難しいため、pngjs ライブラリを使用して詳細な PNG チャンク情報を読み取ります。
+以下に、これらの機能を追加したコードを示します：
 
-// ファイル構造:
-//
-// /pages
-//   index.js
-//   api
-//     getPngInfo.js
-// /components
-//   Layout.js
-//   DropZone.js
-//   MetadataDisplay.js
-// /styles
-//   globals.css
-// next.config.js
-// package.json
