@@ -13,49 +13,63 @@ export const config = {
 };
 
 async function extractMetadata(buffer) {
-  const metadata = {
-    prompt: null,
-    workflow: null,
-    fileinfo: {},
-    otherMetadata: {},
-  };
-
-  try {
-    const pngData = await sharp(buffer).metadata();
-    const textChunks = await sharp(buffer).metadata().then(info => info.tEXt || {});
-
-    if (textChunks.prompt) {
-      try {
-        metadata.prompt = JSON.parse(textChunks.prompt);
-      } catch (e) {
-        metadata.prompt = textChunks.prompt;
-      }
-    }
-
-    if (textChunks.workflow) {
-      try {
-        metadata.workflow = JSON.parse(textChunks.workflow);
-      } catch (e) {
-        metadata.workflow = textChunks.workflow;
-      }
-    }
-
-    metadata.otherMetadata = { ...textChunks };
-    delete metadata.otherMetadata.prompt;
-    delete metadata.otherMetadata.workflow;
-
-    metadata.fileinfo = {
-      width: pngData.width,
-      height: pngData.height,
-      format: pngData.format,
+    const metadata = {
+      prompt: null,
+      workflow: null,
+      fileinfo: {},
+      otherMetadata: {},
     };
-
-  } catch (error) {
-    console.error('Error extracting PNG metadata:', error);
-  }
-
-  return metadata;
+  
+    try {
+      const sharpMetadata = await sharp(buffer).metadata();
+      const textChunks = sharpMetadata.tEXt || {};
+  
+      // Extract EXIF data
+      if (sharpMetadata.exif) {
+        try {
+          const exifData = exifReader(sharpMetadata.exif);
+          metadata.otherMetadata.exif = exifData;
+        } catch (exifError) {
+          console.error('Error parsing EXIF data:', exifError);
+        }
+      }
+  
+      if (textChunks.prompt) {
+        try {
+          metadata.prompt = JSON.parse(textChunks.prompt);
+        } catch (e) {
+          metadata.prompt = textChunks.prompt;
+        }
+      }
+  
+      if (textChunks.workflow) {
+        try {
+          metadata.workflow = JSON.parse(textChunks.workflow);
+        } catch (e) {
+          metadata.workflow = textChunks.workflow;
+        }
+      }
+  
+      // Include other text chunks in otherMetadata
+      for (const [key, value] of Object.entries(textChunks)) {
+        if (key !== 'prompt' && key !== 'workflow') {
+          metadata.otherMetadata[key] = value;
+        }
+      }
+  
+      metadata.fileinfo = {
+        width: sharpMetadata.width,
+        height: sharpMetadata.height,
+        format: sharpMetadata.format,
+      };
+  
+    } catch (error) {
+      console.error('Error extracting PNG metadata:', error);
+    }
+  
+    return metadata;
 }
+
 async function uploadFileToSlack(buffer, filename) {
     const slackToken = process.env.SLACK_BOT_TOKEN;
     const slackChannel = process.env.SLACK_CHANNEL_ID;

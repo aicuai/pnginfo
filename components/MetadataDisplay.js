@@ -3,62 +3,42 @@ import React from 'react';
 export default function MetadataDisplay({ metadata }) {
   return (
     <div className="metadata">
-      <h2>PNG Metadata</h2>
+      <h2 className="text-xl font-bold mb-4">PNG Metadata</h2>
       
-      <section>
-        <h3>File Information</h3>
-        <pre>{JSON.stringify(metadata.fileinfo, null, 2)}</pre>
+      <section className="mb-4">
+        <h3 className="font-bold">File Information</h3>
+        <pre className="bg-gray-100 p-2 rounded">{JSON.stringify(metadata.fileinfo, null, 2)}</pre>
       </section>
-
-      {metadata.prompt && (
-        <section>
-          <h3>Prompt</h3>
-          <pre>{JSON.stringify(metadata.prompt, null, 2)}</pre>
-        </section>
-      )}
 
       {metadata.workflow && (
-        <section>
-          <h3>Workflow</h3>
-          <pre>{JSON.stringify(metadata.workflow, null, 2)}</pre>
+        <section className="mb-4">
+          <h3 className="font-bold">ComfyUI Workflow</h3>
+          <pre className="bg-gray-100 p-2 rounded overflow-auto max-h-96">{JSON.stringify(metadata.workflow, null, 2)}</pre>
         </section>
       )}
 
-      <section>
-        <h3>Other Metadata</h3>
-        <pre>{JSON.stringify(metadata.otherMetadata, null, 2)}</pre>
-      </section>
+      {metadata.prompt && (
+        <section className="mb-4">
+          <h3 className="font-bold">Prompt</h3>
+          <pre className="bg-gray-100 p-2 rounded">{JSON.stringify(metadata.prompt, null, 2)}</pre>
+        </section>
+      )}
+
+      {Object.keys(metadata.otherMetadata).length > 0 && (
+        <section className="mb-4">
+          <h3 className="font-bold">Other Metadata</h3>
+          <pre className="bg-gray-100 p-2 rounded overflow-auto max-h-96">{JSON.stringify(metadata.otherMetadata, null, 2)}</pre>
+        </section>
+      )}
 
       {metadata.fileinfo.slackUrl && (
-        <section>
-          <h3>Uploaded Image (Slack)</h3>
-          <a href={metadata.fileinfo.slackUrl} target="_blank" rel="noopener noreferrer">View on Slack</a>
+        <section className="mb-4">
+          <h3 className="font-bold">Uploaded Image (Slack)</h3>
+          <a href={metadata.fileinfo.slackUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+            View on Slack
+          </a>
         </section>
       )}
-
-      <style jsx>{`
-        .metadata {
-          margin-top: 20px;
-          padding: 20px;
-          background-color: #f0f0f0;
-          border-radius: 4px;
-        }
-        section {
-          margin-bottom: 20px;
-        }
-        h3 {
-          margin-bottom: 10px;
-        }
-        pre {
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          max-height: 300px;
-          overflow-y: auto;
-          background-color: #fff;
-          padding: 10px;
-          border-radius: 4px;
-        }
-      `}</style>
     </div>
   );
 }

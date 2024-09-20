@@ -53,17 +53,22 @@ export default function Home() {
         </ul>
       </div>
 
-      <div {...getRootProps()} className="dropzone mb-4 p-4 border-2 border-dashed rounded cursor-pointer">
+      <div 
+        {...getRootProps()} 
+        className={`dropzone mb-4 p-8 border-2 border-dashed rounded-lg cursor-pointer text-center transition-colors ${
+          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+        }`}
+      >
         <input {...getInputProps()} />
         {isDragActive ? (
-          <p>Drop the PNG file here ...</p>
+          <p className="text-blue-500">Drop the PNG file here ...</p>
         ) : (
           <p>Drag 'n' drop a PNG file here, or click to select a file</p>
         )}
       </div>
 
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
+      {isLoading && <p className="text-center">Loading...</p>}
+      {error && <p className="text-red-500 text-center">{error}</p>}
       
       {metadata && <MetadataDisplay metadata={metadata} />}
     </div>
