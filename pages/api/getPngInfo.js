@@ -3,6 +3,8 @@ import sharp from 'sharp';
 import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
 
 export const config = {
   api: {
@@ -124,52 +126,55 @@ async function sendSlackNotification(metadata, fileUrl) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', ['POST']);
+      return res.status(405).end(`Method ${req.method} Not Allowed`);
+    }
+  
+    const form = new IncomingForm({
+      keepExtensions: true,
+      multiples: false,
+      uploadDir: os.tmpdir(), // システムの一時ディレクトリを使用
+    });
+  
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error('Error parsing form:', err);
+        return res.status(500).json({ error: 'Error parsing form data' });
+      }
+  
+      try {
+        let file;
+        if (files.file) {
+          file = Array.isArray(files.file) ? files.file[0] : files.file;
+        } else {
+          const fileKey = Object.keys(files)[0];
+          file = files[fileKey];
+        }
+  
+        if (!file || !file.filepath) {
+          throw new Error('No file uploaded or invalid file object');
+        }
+  
+        const buffer = await fs.readFile(file.filepath);
+  
+        // ファイル処理後、一時ファイルを削除
+        await fs.unlink(file.filepath).catch(console.error);
+  
+        const metadata = await extractMetadata(buffer);
+        metadata.fileinfo.filename = file.originalFilename || 'unknown.png';
+  
+        const fileUrl = await uploadFileToSlack(buffer, metadata.fileinfo.filename);
+        await sendSlackNotification(metadata, fileUrl);
+  
+        if (fileUrl) {
+          metadata.fileinfo.slackUrl = fileUrl;
+        }
+  
+        res.status(200).json(metadata);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        res.status(500).json({ error: 'Error processing image metadata: ' + error.message });
+      }
+    });
   }
-
-  const form = new IncomingForm({
-    keepExtensions: true,
-    multiples: false,
-    uploadDir: '/tmp', // 一時ディレクトリを指定
-  });
-
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error('Error parsing form:', err);
-      return res.status(500).json({ error: 'Error parsing form data' });
-    }
-
-    try {
-      let file;
-      if (files.file) {
-        file = Array.isArray(files.file) ? files.file[0] : files.file;
-      } else {
-        const fileKey = Object.keys(files)[0];
-        file = files[fileKey];
-      }
-
-      if (!file || !file.filepath) {
-        throw new Error('No file uploaded or invalid file object');
-      }
-
-      const buffer = await fs.readFile(file.filepath);
-
-      const metadata = await extractMetadata(buffer);
-      metadata.fileinfo.filename = file.originalFilename || 'unknown.png';
-
-      const fileUrl = await uploadFileToSlack(buffer, metadata.fileinfo.filename);
-      await sendSlackNotification(metadata, fileUrl);
-
-      if (fileUrl) {
-        metadata.fileinfo.slackUrl = fileUrl;
-      }
-
-      res.status(200).json(metadata);
-    } catch (error) {
-      console.error('Error processing image:', error);
-      res.status(500).json({ error: 'Error processing image metadata: ' + error.message });
-    }
-  });
-}
