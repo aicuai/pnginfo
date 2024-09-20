@@ -1,17 +1,17 @@
 # pnginfo
 pnginfo
 
- ファイル構造:
-// 
+// ファイル構造:
+//
 // /pages
 //   index.js
 //   api
-//     addMetadata.js
-//     initMetadata.js
-//     getMetadata.js
+//     getPngInfo.js
 // /components
-//   MetadataForm.js
-// /lib
-//   pngUtils.js
+//   Layout.js
+//   DropZone.js
+//   MetadataDisplay.js
+// /styles
+//   globals.css
 // next.config.js
 // package.json

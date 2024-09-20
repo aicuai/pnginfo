@@ -1,5 +1,5 @@
 {
-  "name": "png-metadata-manager",
+  "name": "png-metadata-blog",
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
@@ -7,9 +7,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "formidable": "^3.5.1",
     "next": "^14.2.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-dropzone": "^14.2.3",
     "sharp": "^0.32.6"
   }
 }
