@@ -1,35 +1,31 @@
-// /pages/index.js
-import { useState } from 'react';
-import Layout from '../components/Layout';
-import DropZone from '../components/DropZone';
-import MetadataDisplay from '../components/MetadataDisplay';
+import { IncomingForm } from 'formidable';
+import sharp from 'sharp';
 
-export default function Home() {
-  const [metadata, setMetadata] = useState(null);
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-  const handleFileDrop = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
+export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    const form = new IncomingForm();
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        res.status(500).json({ error: 'Error parsing form data' });
+        return;
+      }
 
-    const response = await fetch('/api/getPngInfo', {
-      method: 'POST',
-      body: formData,
+      const file = files.file[0];
+      try {
+        const metadata = await sharp(file.filepath).metadata();
+        res.status(200).json(metadata);
+      } catch (error) {
+        res.status(500).json({ error: 'Error reading PNG metadata' });
+      }
     });
-
-    if (response.ok) {
-      const data = await response.json();
-      setMetadata(data);
-    } else {
-      console.error('Error fetching metadata');
-      setMetadata(null);
-    }
-  };
-
-  return (
-    <Layout>
-      <h1>PNG Metadata Viewer</h1>
-      <DropZone onFileDrop={handleFileDrop} />
-      {metadata && <MetadataDisplay metadata={metadata} />}
-    </Layout>
-  );
+  } else {
+    res.setHeader('Allow', ['POST']);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
 }
