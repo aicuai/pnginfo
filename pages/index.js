@@ -4,7 +4,40 @@ import axios from 'axios';
 import MetadataDisplay from '../components/MetadataDisplay';
 
 export default function Home() {
-  // ... (前の部分は変更なし)
+  const [metadata, setMetadata] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const onDrop = useCallback(async (acceptedFiles) => {
+    if (acceptedFiles.length === 0) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    const file = acceptedFiles[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post('/api/getPngInfo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setMetadata(response.data);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setError('Error processing file. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {'image/png': ['.png']},
+    multiple: false
+  });
 
   return (
     <div className="container mx-auto p-4">
@@ -22,18 +55,20 @@ export default function Home() {
 
       <div 
         {...getRootProps()} 
-        className={`dropzone mb-4 p-8 border-4 border-dashed rounded-lg cursor-pointer text-center transition-colors ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-100 hover:border-gray-400'
+        className={`dropzone mb-4 p-8 border-2 border-dashed rounded-lg cursor-pointer text-center transition-colors ${
+          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
         }`}
-        style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <input {...getInputProps()} />
-        <p className={`text-xl ${isDragActive ? 'text-blue-500' : 'text-gray-700'}`}>
-          {isDragActive ? 'Drop the PNG file here ...' : 'Drag \'n\' drop a PNG file here, or click to select a file'}
-        </p>
+        {isDragActive ? (
+          <p className="text-blue-500">Drop the PNG file here ...</p>
+        ) : (
+          <p>Drag 'n' drop a PNG file here, or click to select a file</p>
+        )}
       </div>
 
-      {isLoading && <p className="text-center">Processing...</p>}
+      {isLoading && <p className="text-center">Loading...</p>}
+      {error && <p className="text-red-500 text-center">{error}</p>}
       
       {metadata && <MetadataDisplay metadata={metadata} />}
     </div>
