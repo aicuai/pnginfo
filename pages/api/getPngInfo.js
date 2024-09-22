@@ -2,6 +2,7 @@ import { IncomingForm } from 'formidable';
 import sharp from 'sharp';
 import fs from 'fs/promises';
 import { PNG } from 'pngjs';
+import ExifReader from 'exif-reader';
 
 export const config = {
   api: {
@@ -9,48 +10,85 @@ export const config = {
   },
 };
 
-async function extractPngMetadata(buffer) {
-  return new Promise((resolve, reject) => {
-    try {
-      const png = PNG.sync.read(buffer);
-      const metadata = {
-        prompt: null,
-        workflow: null,
-        fileinfo: null,
-        otherMetadata: {},
-      };
+async function extractMetadata(buffer) {
+  const metadata = {
+    format: null,
+    size: null,
+    width: null,
+    height: null,
+    space: null,
+    channels: null,
+    depth: null,
+    density: null,
+    isProgressive: null,
+    hasProfile: null,
+    hasAlpha: null,
+    prompt: null,
+    workflow: null,
+    fileinfo: {},
+    otherMetadata: {},
+    exif: {},
+  };
 
-      // Extract tEXt chunks
-      for (const chunkType in png.chunks) {
-        if (chunkType === 'tEXt') {
-          for (const chunk of png.chunks[chunkType]) {
-            const key = chunk.keyword.toString();
-            const value = chunk.text.toString();
+  try {
+    const sharpMetadata = await sharp(buffer).metadata();
+    Object.assign(metadata, sharpMetadata);
 
-            try {
-              const parsedValue = JSON.parse(value);
-              if (key === 'prompt' || key === 'workflow' || key === 'fileinfo') {
-                metadata[key] = parsedValue;
-              } else {
-                metadata.otherMetadata[key] = parsedValue;
-              }
-            } catch (e) {
-              // If parsing fails, store as string
-              if (key === 'prompt' || key === 'workflow' || key === 'fileinfo') {
-                metadata[key] = value;
-              } else {
-                metadata.otherMetadata[key] = value;
-              }
+    metadata.fileinfo = {
+      width: sharpMetadata.width,
+      height: sharpMetadata.height,
+      format: sharpMetadata.format,
+    };
+
+    // Extract EXIF data
+    if (sharpMetadata.exif) {
+      try {
+        const exifData = ExifReader.load(sharpMetadata.exif);
+        for (const [key, value] of Object.entries(exifData)) {
+          if (key === 'MakerNote') {
+            metadata.parameters = value.description;
+          } else if (key === 'UserComment') {
+            metadata.prompt = value.description;
+          } else {
+            metadata.exif[key] = value.description;
+          }
+        }
+      } catch (exifError) {
+        console.error('Error parsing EXIF data:', exifError);
+      }
+    }
+
+    // Extract PNG text chunks
+    const png = PNG.sync.read(buffer);
+    for (const chunkType in png.chunks) {
+      if (chunkType === 'tEXt') {
+        for (const chunk of png.chunks[chunkType]) {
+          const key = chunk.keyword.toString();
+          const value = chunk.text.toString();
+
+          try {
+            const parsedValue = JSON.parse(value);
+            if (key === 'workflow') {
+              metadata.workflow = parsedValue;
+            } else {
+              metadata.otherMetadata[key] = parsedValue;
+            }
+          } catch (e) {
+            if (key === 'workflow') {
+              metadata.workflow = value;
+            } else {
+              metadata.otherMetadata[key] = value;
             }
           }
         }
       }
-
-      resolve(metadata);
-    } catch (error) {
-      reject(error);
     }
-  });
+
+  } catch (error) {
+    console.error('Error extracting metadata:', error);
+  }
+
+  return metadata;
 }
 
 export default async function handler(req, res) {
@@ -81,15 +119,9 @@ export default async function handler(req, res) {
       }
 
       const buffer = await fs.readFile(file.filepath);
-      const sharpMetadata = await sharp(buffer).metadata();
-      const pngMetadata = await extractPngMetadata(buffer);
+      const metadata = await extractMetadata(buffer);
 
-      const combinedMetadata = {
-        ...sharpMetadata,
-        ...pngMetadata,
-      };
-
-      res.status(200).json(combinedMetadata);
+      res.status(200).json(metadata);
     } catch (error) {
       console.error('Error processing image:', error);
       res.status(500).json({ error: 'Error processing image metadata: ' + error.message });
